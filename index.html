@@ -228,6 +228,23 @@ body::before,body::after,.bgs{display:none!important}
 .d{border-radius:14px}.d.s,.d.s:hover{box-shadow:none}
 .pb:hover{box-shadow:none}input:focus,textarea:focus{box-shadow:none}
 .hi{font-size:22px}
+.nav{left:50%;right:auto;width:auto;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);border-radius:40px;background:rgba(244,244,246,.95);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:0;padding:8px;gap:8px;box-shadow:0 12px 40px rgba(0,0,0,.55);animation:nin2 .7s .2s cubic-bezier(.2,1.2,.4,1) both}
+@keyframes nin2{from{transform:translate(-50%,140px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.nav button{flex:none;width:54px;height:54px;border-radius:50%;padding:0;background:#e6e6ea;color:#111;align-items:center;justify-content:center;gap:0}
+.nav button span{display:none}
+.nav svg{width:24px;height:24px;stroke-width:1.9}
+.nav button.on{background:#000;color:var(--ac)}
+.nav button:hover{background:#dcdce0}.nav button.on:hover{background:#000}
+.w{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+#fab{bottom:calc(env(safe-area-inset-bottom,0px) + 94px)}
+.card{background:#121212;border:0;border-radius:28px}
+.tile{border-radius:28px}
+.d{border-radius:18px}
+input[type=checkbox]{border-radius:50%}
+.nav{background:rgba(24,24,24,.92);box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.07)}
+.nav button{background:#262626;color:#cfcfcf}
+.nav button:hover{background:#303030}
+.nav button.on,.nav button.on:hover{background:var(--ac);color:#111}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.ltr{opacity:1}#sp{display:none}}
 </style>
 </head>
@@ -247,8 +264,12 @@ try{if(FB.apiKey&&window.firebase){firebase.initializeApp(FB);fa=firebase.auth()
 var K='planner-v1',MN=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
 var anim=1,ACC=null,authMode='in',S={ts:0,habits:[],days:{}},view='cal',tab=0,dbDoc=null,tm=null;
 var now=new Date(),cur=new Date(now.getFullYear(),now.getMonth(),1),sel=ds(now);
+function norm(r){r.habits=Array.isArray(r.habits)?r.habits:[];r.days=(r.days&&typeof r.days=='object')?r.days:{};Object.keys(r.days).forEach(function(k){var x=r.days[k];if(!x||typeof x!='object'){delete r.days[k];return}x.plans=Array.isArray(x.plans)?x.plans:[];x.checks=(x.checks&&typeof x.checks=='object')?x.checks:{};x.diary=typeof x.diary=='string'?x.diary:''});r.ts=+r.ts||0;return r}
+var rst=null;
+function safeStart(a){try{start(a,false)}catch(e){ACC=null;try{if(rst==a.id){var raw=localStorage.getItem(K+':'+a.id);if(raw)localStorage.setItem(K+':'+a.id+':bak',raw);localStorage.removeItem(K+':'+a.id);rst=null;start(a,false);return}}catch(y){}
+ rst=a.id;ACC=null;render();aerr('Помилка у збережених даних ('+((e&&e.message)||e)+'). Натисніть «Увійти» ще раз: дані цього акаунта буде скинуто (копію збережено в браузері).')}}
 function ld(adopt){var def={ts:0,habits:[{id:'h1',n:'Пити воду',t:'g'},{id:'h2',n:'Прогулянка',t:'g'},{id:'h3',n:'Соцмережі більше години',t:'b'}],days:{}};
- try{var r=JSON.parse(localStorage.getItem(K+':'+ACC.id));if(r&&r.days)return r;if(adopt){r=JSON.parse(localStorage.getItem(K));if(r&&r.days)return r}}catch(e){}return def}
+ try{var r=JSON.parse(localStorage.getItem(K+':'+ACC.id));if(r&&r.days)return norm(r);if(adopt){r=JSON.parse(localStorage.getItem(K));if(r&&r.days)return norm(r)}}catch(e){}return def}
 function ds(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function day(k){return S.days[k]||(S.days[k]={plans:[],checks:{},diary:''})}
@@ -262,6 +283,8 @@ async function sync(){var my=ACC;try{var c=window.claude;if(!c)return;var db=awa
 function accts(){try{return JSON.parse(localStorage.getItem('planner-accts'))||[]}catch(e){return[]}}
 function sha(s){try{return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)).then(function(b){return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')})}catch(e){var h=5381;for(var i=0;i<s.length;i++)h=(h*33^s.charCodeAt(i))>>>0;return Promise.resolve(String(h))}}
 function aerr(t){var e=document.getElementById('ae');if(e)e.textContent=t}
+var lastTap=0;
+function authTap(e){if(e&&e.preventDefault)e.preventDefault();var n=Date.now();if(n-lastTap<800)return;lastTap=n;aerr('Зачекайте…');doAuth().catch(function(x){aerr('Помилка: '+((x&&x.message)||x))})}
 async function doAuth(){if(FBON)return doAuthFB();
  var n=document.getElementById('an').value.trim(),p=document.getElementById('ap').value,L=accts(),nk=n.toLowerCase(),a;
  if(!n)return aerr('Введіть ім’я');
@@ -275,17 +298,17 @@ async function doAuth(){if(FBON)return doAuthFB();
  }else{
   a=L.filter(function(x){return x.k==nk})[0];
   if(!a||a.h!=await sha(a.salt+p))return aerr('Невірне ім’я або пароль');
-  start(a,false)}}
+  safeStart(a)}}
 function lastN(){try{return localStorage.getItem('planner-last')||''}catch(e){return''}}
 function start(a,adopt){ACC=a;try{localStorage.setItem('planner-last',a.name)}catch(e){}try{localStorage.setItem('planner-session',a.id)}catch(e){}S=ld(adopt);if(adopt)save();delC=0;applyAcc();view='cal';sel=ds(new Date());anim=1;st('');sync();render()}
 function logout(){if(unsubA){unsubA();unsubA=null}if(unsubP){unsubP();unsubP=null}PREM=false;ACC=null;document.documentElement.style.removeProperty('--ac');dbDoc=null;S={ts:0,habits:[],days:{}};try{localStorage.removeItem('planner-session')}catch(e){}authMode='in';anim=1;render()}
-function authV(){var u=authMode=='up';return '<div class="hero"><div class="ow"><div class="orb"><svg class="lg"><use href="#lg"/></svg><svg class="lg"><use href="#lg"/></svg><svg class="lg"><use href="#lg"/></svg></div><svg class="lg big"><use href="#lg"/></svg></div><div class="nm2">Track<b>Star</b></div></div><div class="tabs" style="animation:none"><button data-a="aw" data-v="in" class="'+(u?'':'on')+'">Вхід</button><button data-a="aw" data-v="up" class="'+(u?'on':'')+'">Реєстрація</button></div><form class="card" id="af" autocomplete="on" onsubmit="doAuth();return false"><h2>'+(u?'Створити акаунт':'Увійти в планер')+'</h2>'+(FBON?(u?'<input type="text" id="an2" class="fld" placeholder="Ім’я" autocomplete="name">':'')+'<input type="text" id="an" name="username" class="fld" placeholder="Email" autocomplete="email" inputmode="email" value="'+esc(lastN())+'">':'<input type="text" id="an" name="username" class="fld" placeholder="Ім’я" autocomplete="username" value="'+esc(lastN())+'">')+'<input type="password" id="ap" name="password" class="fld" placeholder="Пароль" autocomplete="'+(u?'new-password':'current-password')+'">'+(u?'<input type="password" id="ap2" class="fld" placeholder="Повторіть пароль" autocomplete="new-password">':'')+'<div class="err" id="ae"></div>'+(FBON&&!u?'<div class="mu" data-a="rs" style="text-align:right;cursor:pointer;margin:-4px 0 8px">Забули пароль?</div>':'')+'<button type="submit" class="pb" style="width:100%;font-size:16px">'+(u?'Зареєструватись':'Увійти')+'</button>'+(FBON?'<button type="button" class="gbtn" data-a="gg">Продовжити з Google</button>':'')+'</form><div class="mu">'+(FBON?'Ваші дані синхронізуються між усіма вашими пристроями.':'У кожного акаунта — свої звички, плани та щоденник.')+'</div>'}
+function authV(){var u=authMode=='up';return '<div class="hero"><div class="ow"><div class="orb"><svg class="lg"><use href="#lg"/></svg><svg class="lg"><use href="#lg"/></svg><svg class="lg"><use href="#lg"/></svg></div><svg class="lg big"><use href="#lg"/></svg></div><div class="nm2">Track<b>Star</b></div></div><div class="tabs" style="animation:none"><button data-a="aw" data-v="in" class="'+(u?'':'on')+'">Вхід</button><button data-a="aw" data-v="up" class="'+(u?'on':'')+'">Реєстрація</button></div><form class="card" id="af" autocomplete="on" onsubmit="authTap(event);return false"><h2>'+(u?'Створити акаунт':'Увійти в планер')+'</h2>'+(FBON?(u?'<input type="text" id="an2" class="fld" placeholder="Ім’я" autocomplete="name">':'')+'<input type="text" id="an" name="username" class="fld" placeholder="Email" autocomplete="email" inputmode="email" value="'+esc(lastN())+'">':'<input type="text" id="an" name="username" class="fld" placeholder="Ім’я" autocomplete="username" value="'+esc(lastN())+'">')+'<input type="password" id="ap" name="password" class="fld" placeholder="Пароль" autocomplete="'+(u?'new-password':'current-password')+'">'+(u?'<input type="password" id="ap2" class="fld" placeholder="Повторіть пароль" autocomplete="new-password">':'')+'<div class="err" id="ae"></div>'+(FBON&&!u?'<div class="mu" data-a="rs" style="text-align:right;cursor:pointer;margin:-4px 0 8px">Забули пароль?</div>':'')+'<button type="submit" class="pb" ontouchend="authTap(event)" style="width:100%;font-size:16px">'+(u?'Зареєструватись':'Увійти')+'</button>'+(FBON?'<button type="button" class="gbtn" data-a="gg">Продовжити з Google</button>':'')+'</form><div class="mu">'+(FBON?'Ваші дані синхронізуються між усіма вашими пристроями.':'У кожного акаунта — свої звички, плани та щоденник. · v7')+'</div>'}
 
 function render(){
  if(!ACC){document.getElementById('tabs').innerHTML='';document.getElementById('me').innerHTML='';var e0=document.getElementById('v');e0.className=anim?'anim':'';anim=0;e0.innerHTML=authV();fabU();return}
  document.getElementById('me').innerHTML='<div class="mb" data-a="pro">'+avH('')+'<div><small>Привіт,</small><div class="hi">'+esc(ACC.name)+'</div></div></div><div class="sb"><span class="chip" title="Серія днів">🔥 '+allStreak().cur+'</span><button class="ib" data-a="lo">Вийти</button></div>';
  var T=[['cal','Календар'],['hab','Звички'],['dia','Блокнот'],['sta','Статистика'],['pro','Профіль']];
- document.getElementById('tabs').innerHTML=T.map(function(t){return '<button data-a="tab" data-v="'+t[0]+'" class="'+(view==t[0]?'on':'')+'">'+ICO[t[0]]+'<span>'+t[1]+'</span></button>'}).join('');
+ document.getElementById('tabs').innerHTML=T.map(function(t){return '<button data-a="tab" data-v="'+t[0]+'" title="'+t[1]+'" aria-label="'+t[1]+'" class="'+(view==t[0]?'on':'')+'">'+ICO[t[0]]+'<span>'+t[1]+'</span></button>'}).join('');
  var h=view=='cal'?cal():view=='hab'?hab():view=='sta'?sta():view=='pro'?pro():dia();
  var el=document.getElementById('v');var wa=anim;el.className=wa?'anim':'';anim=0;el.innerHTML=h;if(wa)el.querySelectorAll('[data-n]').forEach(cu);fabU()}
 var ACCS={lime:'#e5ff56',mint:'#7ff5dd',pink:'#ff8fd8',orange:'#ffb35c',blue:'#8fb4ff',purple:'#c4a1ff',red:'#ff7a7a'},PFREE=['lime','mint'],stp=30,delC=0,fired={},WD=['Нд','Пн','Вт','Ср','Чт','Пт','Сб'],EMO=['🦊','🐼','🦁','🐯','🐸','🦄','🐙','🚀','🌵','🎧'];
@@ -320,7 +343,7 @@ function pro(){var t=tot(),lv=Math.floor(Math.sqrt(t.xp/8))+1,b0=(lv-1)*(lv-1)*8
  o+='<div class="card"><h2>Досягнення</h2><div class="bdg">'+BG.map(function(x){return '<div class="bd'+(x[2]?' on':'')+'"><svg class="lg"><use href="#lg"/></svg><b>'+x[0]+'</b><small>'+x[1]+'</small></div>'}).join('')+'</div></div>';
  o+='<div class="card"><h2>Резервна копія</h2><textarea id="bk" style="min-height:90px" placeholder="Тут з’явиться копія даних. Щоб відновити — вставте її сюди або оберіть файл."></textarea><div class="add"><button class="ib" data-a="ex">Експорт</button><button class="ib" data-a="im">Імпорт</button><label class="ib">Файл<input type="file" id="bkf" accept=".json,.txt,application/json" hidden></label></div><div class="err" id="be" style="margin-top:8px"></div></div>';
  o+='<div class="card"><h2>Акаунт</h2>'+(FBON?'<div class="mu" style="margin-bottom:10px">'+esc(ACC.email||'')+'</div>':'')+(FBON&&!ACC.pw?'':'<input type="password" id="op" class="fld" placeholder="Поточний пароль" autocomplete="current-password"><input type="password" id="np2" class="fld" placeholder="Новий пароль" autocomplete="new-password"><button class="ib" data-a="cp">Змінити пароль</button>')+'<div class="err" id="pe" style="margin-top:8px"></div><button class="ib" data-a="da" style="margin-top:6px;color:#ff9d7a">'+(delC?'Точно видалити? Натисніть ще раз':'Видалити акаунт і дані')+'</button></div>';
- o+='<div class="mu" style="padding:0 6px 20px">TrackStar v3 · Ваші дані зберігаються лише на вашому пристрої (і в хмарі акаунта, якщо вона доступна). Ми не збираємо та не передаємо персональну інформацію.</div>';return o}
+ o+='<div class="mu" style="padding:0 6px 20px">TrackStar v7 · Ваші дані зберігаються лише на вашому пристрої (і в хмарі акаунта, якщо вона доступна). Ми не збираємо та не передаємо персональну інформацію.</div>';return o}
 function toast(t){try{var c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.07;o.start();setTimeout(function(){o.stop();c.close()},170)}catch(e){}
  var d=document.createElement('div');d.className='toast';d.innerHTML='<svg class="lg"><use href="#lg"/></svg><span></span>';d.lastChild.textContent=t;d.onclick=function(){d.remove()};document.body.appendChild(d);setTimeout(function(){d.remove()},7000)}
 function fire(id,t){if(fired[id])return;fired[id]=1;toast(t);try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}try{if(window.Notification&&Notification.permission=='granted')new Notification('TrackStar',{body:t})}catch(e){}}
@@ -340,7 +363,7 @@ async function changePw(){if(FBON)return changePwFB();var o=document.getElementB
 function delAcc(){if(!delC){delC=1;render();return}if(FBON){var fu=fa.currentUser,fid=fu.uid;delC=0;fdb.doc('users/'+fid).delete().catch(function(){}).then(function(){return fu.delete()}).then(function(){try{localStorage.removeItem(K+':'+fid)}catch(e){}}).catch(function(e){bkErr('pe',fbErr(e));render()});return}var id=ACC.id;try{localStorage.setItem('planner-accts',JSON.stringify(accts().filter(function(x){return x.id!=id})));localStorage.removeItem(K+':'+id)}catch(e){}try{dbDoc&&dbDoc.delete()}catch(e){}delC=0;logout()}
 setInterval(tick,15000);
 function isP(){return PREM||FB.devPremium}
-function fbErr(e){var m={'auth/email-already-in-use':'Цей email уже зареєстровано','auth/invalid-email':'Некоректний email','auth/weak-password':'Пароль занадто слабкий (мінімум 6 символів)','auth/user-not-found':'Невірний email або пароль','auth/wrong-password':'Невірний email або пароль','auth/invalid-credential':'Невірний email або пароль','auth/too-many-requests':'Забагато спроб. Спробуйте пізніше','auth/network-request-failed':'Немає з’єднання з інтернетом','auth/popup-closed-by-user':'Вікно входу закрито','auth/requires-recent-login':'Для цієї дії увійдіть знову'};return m[e&&e.code]||'Сталася помилка. Спробуйте ще раз'}
+function fbErr(e){var m={'auth/email-already-in-use':'Цей email уже зареєстровано','auth/invalid-email':'Некоректний email','auth/weak-password':'Пароль занадто слабкий (мінімум 6 символів)','auth/user-not-found':'Невірний email або пароль','auth/wrong-password':'Невірний email або пароль','auth/invalid-credential':'Невірний email або пароль','auth/too-many-requests':'Забагато спроб. Спробуйте пізніше','auth/network-request-failed':'Немає з’єднання з інтернетом','auth/popup-closed-by-user':'Вікно входу закрито','auth/requires-recent-login':'Для цієї дії увійдіть знову','auth/operation-not-allowed':'У Firebase не ввімкнено вхід через Email/Password (Authentication → Sign-in method)','auth/unauthorized-domain':'Домен сайту не додано в Authorized domains у Firebase','auth/invalid-api-key':'Невірний apiKey у файлі','auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Невірний apiKey у файлі','auth/configuration-not-found':'Authentication ще не налаштовано у Firebase (натисніть Get started)'};return m[e&&e.code]||('Помилка: '+((e&&e.code)||'невідома'))}
 function doAuthFB(){var em=document.getElementById('an').value.trim(),p=document.getElementById('ap').value,u=authMode=='up';
  if(!em)return aerr('Введіть email');if(p.length<6)return aerr('Пароль — мінімум 6 символів');
  if(u){var n=document.getElementById('an2').value.trim();if(!n)return aerr('Введіть ім’я');if(p!=document.getElementById('ap2').value)return aerr('Паролі не збігаються');
@@ -436,8 +459,9 @@ document.addEventListener('touchend',function(e){if(!ACC||view!='cal'||!sw)retur
 (function(){for(var i=0;i<7;i++){var s=star('lg bgs'),z=10+Math.random()*18;s.style.left=Math.random()*94+'%';s.style.top=Math.random()*90+'%';s.style.width=s.style.height=z+'px';s.style.animationDuration=(7+Math.random()*8)+'s';s.style.animationDelay=(-Math.random()*8)+'s';document.body.appendChild(s)}
  var f=document.createElement('button');f.id='fab';f.setAttribute('data-a','fab');f.setAttribute('aria-label','Додати план');f.textContent='+';document.body.appendChild(f)})();
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+window.addEventListener('error',function(e){aerr('Помилка: '+e.message)});window.addEventListener('unhandledrejection',function(e){aerr('Помилка: '+((e.reason&&e.reason.message)||e.reason))});
 (function(){var sid=null;try{sid=localStorage.getItem('planner-session')}catch(e){}
- var a=accts().filter(function(x){return x.id==sid})[0];setTimeout(function(){if(FBON){booted=1;applyUser()}else if(a)start(a,false);else render()},2000)})();
+ var a=accts().filter(function(x){return x.id==sid})[0];setTimeout(function(){if(FBON){booted=1;applyUser()}else if(a)safeStart(a);else render()},2000)})();
 (function(){var n=document.getElementById('nm2');'TrackStar'.split('').forEach(function(c,i){var e=document.createElement('span');e.className='ltr'+(i>4?' s':'');e.textContent=c;e.style.animationDelay=(.8+i*.08)+'s';n.appendChild(e)});setTimeout(function(){var q=document.getElementById('sp');if(q)q.remove()},2900)})();
 </script>
 </body>
